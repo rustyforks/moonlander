@@ -1,0 +1,34 @@
+[package]
+name = "moonlander"
+version = "0.1.0"
+authors = ["Ecmel Berk Canlier <me@ecmelberk.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gtk = "0.8.1"
+relm = "0.19.0"
+relm-derive = "0.19.0"
+anyhow = "1.0.31"
+log = "0.4.8"
+pretty_env_logger = "0.4.0"
+lazy_static = "1.4.0"
+toml = "0.5.6"
+directories-next = "1.0.0"
+serde = {version="1.0.110", features=["derive"]}
+cairo-rs = "0.8.1"
+gio = "0.8.1"
+url = "2.1.1"
+glib = "0.9.3"
+rustls = {version="0.17.0", features=["dangerous_configuration"]}
+webpki = "0.21.2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+# optimize dependencies as they are rarely re-built
+[profile.dev.package."*"]
+opt-level = 3
