@@ -81,6 +81,6 @@ impl<C: Deref<Target = Context>> Line<C> for List {
         pangocairo::show_layout(ctx, pango);
 
         // reset
-        ctx.rel_move_to(w + theme.list.bullet_padding, theme.link.line_spacing);
+        ctx.rel_move_to(w + theme.list.bullet_padding, theme.link.line_spacing / 2.0);
     }
 }

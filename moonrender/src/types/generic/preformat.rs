@@ -71,6 +71,6 @@ impl<C: Deref<Target = Context>> Line<C> for Preformat {
         );
         pangocairo::show_layout(ctx, pango);
 
-        ctx.rel_move_to(0.0, theme.monospace.line_spacing);
+        ctx.rel_move_to(0.0, theme.monospace.line_spacing / 2.0);
     }
 }

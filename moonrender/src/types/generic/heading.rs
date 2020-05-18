@@ -74,6 +74,6 @@ impl<C: Deref<Target = Context>> Line<C> for Heading {
         );
         pangocairo::show_layout(ctx, pango);
 
-        ctx.rel_move_to(0.0, theme.heading.line_spacing);
+        ctx.rel_move_to(0.0, theme.heading.line_spacing / 2.0);
     }
 }

@@ -69,7 +69,7 @@ impl<C: Deref<Target = Context>> Line<C> for Link {
         );
         pangocairo::show_layout(ctx, pango);
 
-        ctx.rel_move_to(0.0, theme.link.line_spacing);
+        ctx.rel_move_to(0.0, theme.link.line_spacing / 2.0);
     }
 
     fn click(&mut self, data: &Data) -> Option<RendererMsg> {
