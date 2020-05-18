@@ -1,19 +1,22 @@
-use crate::renderer::{lines::Line, MARGIN};
+use crate::lines::Line;
+use crate::MARGIN;
 use cairo::Context;
-use pango::{Alignment, Layout, WrapMode};
+use pango::{Alignment, Layout, Weight, WrapMode};
 use std::ops::Deref;
 
-pub struct Preformat {
+pub struct Heading {
     line: String,
+    size: u8,
 
     width: f64,
     height: f64,
 }
 
-impl Preformat {
-    pub fn new(line: String) -> Self {
+impl Heading {
+    pub fn new(line: String, size: u8) -> Self {
         Self {
             line,
+            size,
 
             width: 0.0,
             height: 0.0,
@@ -21,22 +24,22 @@ impl Preformat {
     }
 }
 
-impl<C: Deref<Target = Context>> Line<C> for Preformat {
+impl<C: Deref<Target = Context>> Line<C> for Heading {
     fn get_size(&self) -> (f64, f64) {
         (self.width, self.height)
     }
 
     fn draw(&mut self, ctx: &C, pango: &Layout) {
-        if self.line.is_empty() {
-            return;
-        }
-
         let w = ctx.clip_extents().2;
         pango.set_width(pango::units_from_double(w - ((w * MARGIN) * 2.0)));
 
+        let font_description = &mut pango::FontDescription::from_string("sans-serif");
+        font_description.set_weight(Weight::Heavy);
+        font_description.set_size(pango::units_from_double((26 / self.size).into()));
+
         pango.set_alignment(Alignment::Left);
-        pango.set_wrap(WrapMode::Word); // todo don't
-        pango.set_font_description(Some(&pango::FontDescription::from_string("monospace")));
+        pango.set_wrap(WrapMode::Word);
+        pango.set_font_description(Some(font_description));
         pango.set_text(&self.line);
 
         let (w, h) = pango.get_pixel_size();

@@ -1,8 +1,7 @@
 use super::{
     generic::{Heading, Link, List, Preformat, Text},
-    Renderer,
+    Line, Renderer,
 };
-use crate::renderer::lines::Line;
 use anyhow::{Context as _, Result};
 use cairo::Context;
 use std::ops::Deref;

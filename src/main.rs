@@ -1,10 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
-mod gemini;
 mod gui;
-
-pub mod renderer;
 
 use anyhow::{anyhow, Result};
 use directories_next::ProjectDirs;

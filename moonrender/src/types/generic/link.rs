@@ -1,4 +1,5 @@
-use crate::renderer::{lines::Line, Data, Msg as RendererMsg, MARGIN};
+use crate::lines::Line;
+use crate::{Data, Msg as RendererMsg, MARGIN};
 use cairo::Context;
 use pango::{Alignment, Layout, WrapMode};
 use std::ops::Deref;

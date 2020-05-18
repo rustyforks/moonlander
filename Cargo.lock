@@ -321,6 +321,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gemini"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lazy_static",
+ "log",
+ "rustls",
+ "url",
+ "webpki",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -522,22 +534,29 @@ name = "moonlander"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cairo-rs",
  "directories-next",
  "gdk",
  "gtk",
  "lazy_static",
  "log",
- "pango",
- "pangocairo",
  "pretty_env_logger",
  "relm",
  "relm-derive",
- "rustls",
+ "relm-moonrender",
  "serde",
  "toml",
+]
+
+[[package]]
+name = "moonrender"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cairo-rs",
+ "log",
+ "pango",
+ "pangocairo",
  "url",
- "webpki",
 ]
 
 [[package]]
@@ -768,6 +787,19 @@ dependencies = [
  "proc-macro2 0.4.30",
  "quote 0.6.13",
  "syn 0.15.44",
+]
+
+[[package]]
+name = "relm-moonrender"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "gdk",
+ "gemini",
+ "gtk",
+ "moonrender",
+ "relm",
+ "relm-derive",
 ]
 
 [[package]]

@@ -6,6 +6,7 @@ use std::{
     net::TcpStream,
     sync::Arc,
 };
+use url::Url;
 
 lazy_static::lazy_static! {
     static ref TLS: Arc<rustls::ClientConfig> = Arc::new({
@@ -24,7 +25,7 @@ pub enum Message {
 }
 
 pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
-    let url = url::Url::parse(&url).context("Cannot parse URL")?;
+    let url = Url::parse(&url).context("Cannot parse URL")?;
 
     let host = url.host_str().context("Url doesn't have host")?;
     let port = url.port().unwrap_or(1965);

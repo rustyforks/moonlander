@@ -1,4 +1,3 @@
-mod content;
 mod header;
 
 use gtk::prelude::*;
@@ -7,8 +6,8 @@ use gtk::WidgetExt;
 use relm::{connect, init, Component, Relm, Widget};
 use relm_derive::{widget, Msg};
 
-use content::{Content, Msg as ContentMsg};
 use header::{Header, Msg as HeaderMsg};
+use relm_moonrender::{Moonrender, Msg as MoonrenderMsg};
 
 #[derive(Msg)]
 pub enum Msg {
@@ -41,8 +40,8 @@ impl Widget for Win {
 
         connect!(header@HeaderMsg::Goto(ref url), self.model.relm, Msg::Goto(url.to_owned()));
 
-        connect!(content@ContentMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));
-        connect!(content@ContentMsg::Error(ref e), self.model.relm, Msg::Error(e.to_string(), {
+        connect!(content@MoonrenderMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));
+        connect!(content@MoonrenderMsg::Error(ref e), self.model.relm, Msg::Error(e.to_string(), {
             let mut err_str = String::new();
 
             for e in e.chain().skip(1) {
@@ -76,7 +75,7 @@ impl Widget for Win {
                 d.show();
             }
 
-            Msg::Goto(url) => self.content.emit(ContentMsg::Goto(url)),
+            Msg::Goto(url) => self.content.emit(MoonrenderMsg::Goto(url)),
             Msg::Redirect(url) => self.model.header.emit(HeaderMsg::Redirect(url)),
         }
     }
@@ -91,7 +90,7 @@ impl Widget for Win {
                 min_content_height: 400,
 
                 #[name="content"]
-                Content {},
+                Moonrender {},
             },
 
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
