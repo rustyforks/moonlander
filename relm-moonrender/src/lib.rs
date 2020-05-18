@@ -4,6 +4,7 @@ use relm::{Channel, DrawHandler, Relm, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
+pub use moonrender;
 use moonrender::{Msg as RendererMsg, Renderer};
 
 #[derive(Msg)]
@@ -28,7 +29,7 @@ pub struct Model {
 
 #[widget]
 impl Widget for Moonrender {
-    fn model(relm: &Relm<Self>, _: ()) -> Model {
+    fn model(relm: &Relm<Self>, theme: moonrender::Theme) -> Model {
         let stream = relm.stream().clone();
 
         let (channel, sender) = Channel::new(move |msg| stream.emit(Msg::ConnectionMessage(msg)));
@@ -56,7 +57,7 @@ impl Widget for Moonrender {
             _channel: channel,
 
             draw: DrawHandler::new().expect("Cannot create content draw handler"),
-            renderer: Renderer::new(),
+            renderer: Renderer::new(theme),
         }
     }
 

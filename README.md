@@ -7,6 +7,7 @@ Moonlander is the fanciest Gemini client in the entire solar system.
 ```bash
 cargo build --release
 cd target/release
+strip -s moonlander # optional, reduces file size by ~50%
 ```
 
 ### Requirements

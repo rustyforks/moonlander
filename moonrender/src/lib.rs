@@ -1,3 +1,4 @@
+mod config;
 mod lines;
 mod types;
 
@@ -8,8 +9,7 @@ use std::{collections::HashMap, ops::Deref};
 use types::text_gemini::Gemini;
 use url::Url;
 
-const MARGIN: f64 = 0.25;
-const LINE_SPACING: f64 = 4.0;
+pub use config::Theme;
 
 pub enum Msg {
     Goto(String),
@@ -21,6 +21,8 @@ pub struct Data {
     pub url: Option<Url>,
 
     pub source: String,
+
+    pub theme: Theme,
 }
 
 #[derive(Default)]
@@ -36,7 +38,7 @@ pub struct Renderer<C: Deref<Target = Context>> {
 }
 
 impl<C: Deref<Target = Context>> Renderer<C> {
-    pub fn new() -> Self {
+    pub fn new(theme: Theme) -> Self {
         let mut renderers: HashMap<String, Box<dyn types::Renderer<C>>> = HashMap::new();
 
         renderers.insert("text/gemini".to_owned(), Box::new(Gemini::new()));
@@ -44,9 +46,11 @@ impl<C: Deref<Target = Context>> Renderer<C> {
         Self {
             data: Data {
                 mime: "text/plain".to_owned(),
+                url: None,
 
                 source: String::new(),
-                url: None,
+
+                theme,
             },
 
             lines: vec![],
@@ -73,7 +77,8 @@ impl<C: Deref<Target = Context>> Renderer<C> {
                     self.renderers
                         .get_mut(&self.data.mime)
                         .context("no renderer for mime")?
-                        .parse_line(&line).context("Cannot render line")?,
+                        .parse_line(&line)
+                        .context("Cannot render line")?,
                 );
 
                 self.chunk_incomplete.clear();
@@ -105,32 +110,36 @@ impl<C: Deref<Target = Context>> Renderer<C> {
     }
 
     pub fn render(&mut self, ctx: &C) -> (i32, i32) {
-        ctx.set_source_rgb(1.0, 1.0, 1.0);
+        ctx.set_source_rgb(
+            self.data.theme.background_color.0 as f64 / 255.0,
+            self.data.theme.background_color.1 as f64 / 255.0,
+            self.data.theme.background_color.2 as f64 / 255.0,
+        );
+
         ctx.paint();
 
         let pango = pangocairo::create_layout(ctx).expect("cannot create pango layout");
 
         let w = ctx.clip_extents().2;
-        self.margin = w * MARGIN;
+        self.margin = w * self.data.theme.margin_percent;
 
-        ctx.move_to(self.margin, LINE_SPACING * 2.0);
+        ctx.move_to(self.margin, self.data.theme.paragraph_spacing * 2.0);
         for line in &mut self.lines {
-            line.draw(ctx, &pango);
-            ctx.rel_move_to(0.0, line.get_size().1 + LINE_SPACING);
+            line.draw(ctx, &pango, &self.data.theme);
+            ctx.rel_move_to(0.0, line.get_size().1 + self.data.theme.paragraph_spacing);
         }
 
         (
             w as i32,
-            ctx.get_current_point().1 as i32 + LINE_SPACING as i32 * 2,
+            ctx.get_current_point().1 as i32 + self.data.theme.paragraph_spacing as i32 * 2,
         )
     }
 
     pub fn click(&mut self, pos: (f64, f64)) -> Option<Msg> {
         log::debug!("click {:?}", pos);
 
-        let mut coords = (self.margin, LINE_SPACING * 2.0);
-
-        for (i, line) in self.lines.iter_mut().enumerate() {
+        for line in self.lines.iter_mut() {
+            let coords = line.get_pos();
             let size = line.get_size();
 
             if pos.0 >= coords.0
@@ -138,11 +147,8 @@ impl<C: Deref<Target = Context>> Renderer<C> {
                 && pos.1 >= coords.1
                 && pos.1 <= coords.1 + size.1
             {
-                log::debug!("clicked on line at index: {}", i);
                 return line.click(&self.data);
             }
-
-            coords.1 += size.1 + LINE_SPACING;
         }
 
         None

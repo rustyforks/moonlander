@@ -1,5 +1,5 @@
 use crate::lines::Line;
-use crate::{Data, Msg as RendererMsg, MARGIN};
+use crate::{Data, Msg as RendererMsg, Theme};
 use cairo::Context;
 use pango::{Alignment, Layout, WrapMode};
 use std::ops::Deref;
@@ -7,6 +7,9 @@ use std::ops::Deref;
 pub struct Link {
     url: String,
     line: String,
+
+    x: f64,
+    y: f64,
 
     width: f64,
     height: f64,
@@ -18,6 +21,9 @@ impl Link {
             url,
             line,
 
+            x: 0.0,
+            y: 0.0,
+
             width: 0.0,
             height: 0.0,
         }
@@ -25,26 +31,47 @@ impl Link {
 }
 
 impl<C: Deref<Target = Context>> Line<C> for Link {
+    fn get_pos(&self) -> (f64, f64) {
+        (self.x, self.y)
+    }
+
     fn get_size(&self) -> (f64, f64) {
         (self.width, self.height)
     }
 
-    fn draw(&mut self, ctx: &C, pango: &Layout) {
-        let w = ctx.clip_extents().2;
-        pango.set_width(pango::units_from_double(w - ((w * MARGIN) * 2.0)));
+    fn draw(&mut self, ctx: &C, pango: &Layout, theme: &Theme) {
+        let (x, y) = ctx.get_current_point();
+        self.x = x;
+        self.y = y;
 
+        let w = ctx.clip_extents().2;
+        pango.set_width(pango::units_from_double(
+            w - ((w * theme.margin_percent) * 2.0),
+        ));
+
+        let mut font_description = pango::FontDescription::from_string(&theme.link.font);
+        font_description.set_size(pango::units_from_double(theme.link.size));
+
+        pango.set_spacing(pango::units_from_double(theme.link.line_spacing));
         pango.set_alignment(Alignment::Left);
         pango.set_wrap(WrapMode::Word);
-        pango.set_font_description(Some(&pango::FontDescription::from_string("sans-serif")));
+        pango.set_font_description(Some(&font_description));
         pango.set_text(&self.line);
 
         let (w, h) = pango.get_pixel_size();
         self.width = w as f64;
-        self.height = h as f64;
+        self.height = h as f64 + theme.link.line_spacing;
 
-        ctx.set_source_rgb(0.0, 0.0, 1.0);
+        ctx.set_source_rgb(
+            theme.link.color.0 as f64 / 255.0,
+            theme.link.color.1 as f64 / 255.0,
+            theme.link.color.2 as f64 / 255.0,
+        );
         pangocairo::show_layout(ctx, pango);
+
+        ctx.rel_move_to(0.0, theme.link.line_spacing);
     }
+
     fn click(&mut self, data: &Data) -> Option<RendererMsg> {
         if let Some(url) = &data.url {
             match url.join(&self.url) {

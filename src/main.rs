@@ -15,13 +15,14 @@ lazy_static::lazy_static! {
 }
 
 fn main() -> Result<()> {
-    if cfg!(debug_assertions) {
-        let mut b = pretty_env_logger::formatted_builder();
-        b.filter_level(LevelFilter::Debug);
-        b.try_init()
+    let mut b = pretty_env_logger::formatted_builder();
+    b.filter_level(if cfg!(debug_assertions) {
+        LevelFilter::Debug
     } else {
-        pretty_env_logger::try_init()
-    }?;
+        LevelFilter::Info
+    });
+
+    b.try_init()?;
 
     log::info!("Hello, moon!");
 

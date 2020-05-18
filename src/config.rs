@@ -1,6 +1,7 @@
 use crate::DIRS;
 
 use anyhow::{Context, Result};
+use relm_moonrender::moonrender::Theme;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
@@ -9,29 +10,9 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Color(u8, u8, u8);
-
-#[derive(Serialize, Deserialize)]
-pub struct ContentTheme {}
-
-#[derive(Serialize, Deserialize)]
-pub struct Theme {
-    pub content: ContentTheme,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Window {
-    pub size: (u32, u32),
-
-    pub fps: u32,
-    pub vsync: bool,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct Config {
     pub homepage: String,
 
-    pub window: Window,
     pub theme: Theme,
 }
 
@@ -39,16 +20,7 @@ fn default_config() -> Config {
     Config {
         homepage: "gemini://gemini.circumlunar.space".to_owned(),
 
-        window: Window {
-            size: (800, 600),
-
-            fps: 60,
-            vsync: false, // Causes flickering when resizing
-        },
-
-        theme: Theme {
-            content: ContentTheme {},
-        },
+        theme: Theme::default(),
     }
 }
 
@@ -65,7 +37,7 @@ fn load_config() -> Result<Config> {
 
         let parent = path
             .parent()
-            .expect("Config path doesn't have a parent directory?");
+            .context("Config path doesn't have a parent directory?")?;
 
         fs::create_dir_all(parent).context("Cannot create config parent directories")?;
         fs::write(&path, out).context("Cannot write default config")?;

@@ -556,6 +556,7 @@ dependencies = [
  "log",
  "pango",
  "pangocairo",
+ "serde",
  "url",
 ]
 

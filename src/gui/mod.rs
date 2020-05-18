@@ -50,6 +50,10 @@ impl Widget for Win {
 
             err_str.trim().to_owned()
         }));
+
+        let url = crate::CONFIG.homepage.clone();
+        self.model.relm.stream().emit(Msg::Redirect(url.clone()));
+        self.model.relm.stream().emit(Msg::Goto(url));
     }
 
     fn update(&mut self, event: Msg) {
@@ -90,7 +94,7 @@ impl Widget for Win {
                 min_content_height: 400,
 
                 #[name="content"]
-                Moonrender {},
+                Moonrender(crate::CONFIG.theme.clone()) {},
             },
 
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
