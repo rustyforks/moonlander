@@ -74,19 +74,25 @@ impl Widget for Moonrender {
     }
 
     view! {
-        gtk::Box {
-            orientation: gtk::Orientation::Horizontal,
+        #[name="window"]
+        gtk::ScrolledWindow {
+            min_content_width: 400,
+            min_content_height: 400,
 
-            #[name="content"]
-            gtk::DrawingArea {
-                child: {
-                    expand: true,
+            gtk::Box {
+                orientation: gtk::Orientation::Horizontal,
+
+                #[name="content"]
+                gtk::DrawingArea {
+                    child: {
+                        expand: true,
+                    },
+
+                    can_focus: true,
+
+                    draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
+                    button_press_event(_, e) => (Msg::Click(e.clone()), Inhibit(false)),
                 },
-
-                can_focus: true,
-
-                draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
-                button_press_event(_, e) => (Msg::Click(e.clone()), Inhibit(false)),
             },
         }
     }
@@ -98,8 +104,15 @@ impl Moonrender {
             Msg::UpdateDrawBuffer => {
                 let ctx = self.model.draw.get_context();
 
-                let (_, h) = self.model.renderer.render(&ctx);
-                let w = self.content.get_preferred_size().1.width;
+                let (size, _) = self.content.get_preferred_size();
+                let (y, height) = if let Some(adjustment) = self.window.get_vadjustment() {
+                    (adjustment.get_value(), adjustment.get_page_size())
+                } else {
+                    (0.0, size.height as f64)
+                };
+
+                let (_, h) = self.model.renderer.render(y, height as f64, &ctx);
+                let w = size.width;
 
                 self.content.set_size_request(w, h);
             }

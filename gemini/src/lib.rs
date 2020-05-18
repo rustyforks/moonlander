@@ -54,7 +54,6 @@ pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
                 Err(e) => {
                     if e.kind() == std::io::ErrorKind::ConnectionAborted {
                         log::debug!("connection aborted, assume server intended to do that");
-                        chunk_callback(Message::Chunk("\n".to_owned()));
                     } else {
                         break_response = Err(e).context("Cannot read");
                     }
@@ -109,5 +108,6 @@ pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
     }
 
     log::debug!("gemini machine broke");
+    chunk_callback(Message::Chunk("\n".to_owned()));
     break_response
 }

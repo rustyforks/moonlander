@@ -28,7 +28,11 @@ render.new_page_chunk("""
 """);
 
 let ctx: cairo::Context = ...;
-let (w, h) = render.draw(ctx);
+
+let scroll_y = 0.0;
+let height = 720.0;
+
+let (w, h) = render.draw(scroll_y, height, ctx);
 
 // Send a click event to the page
 let msg: moonrender::Msg = render.click((x, y));

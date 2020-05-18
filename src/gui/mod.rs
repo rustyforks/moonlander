@@ -89,13 +89,8 @@ impl Widget for Win {
         gtk::ApplicationWindow {
             titlebar: Some(self.model.header.widget()),
 
-            gtk::ScrolledWindow {
-                min_content_width: 400,
-                min_content_height: 400,
-
-                #[name="content"]
-                Moonrender(crate::CONFIG.theme.clone()) {},
-            },
+            #[name="content"]
+            Moonrender(crate::CONFIG.theme.clone()) {},
 
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
         }
