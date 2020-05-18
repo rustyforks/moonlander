@@ -19,6 +19,8 @@ pub enum Message {
     Chunk(String),
     MIME(String),
     Redirect(String),
+
+    Error(anyhow::Error),
 }
 
 pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
@@ -39,7 +41,7 @@ pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
     let mut is_content = false;
 
     log::info!("Requesting {}", url);
-    write!(stream, "{}\r\n", url).expect("Cannot write gemini header");
+    write!(stream, "{}\r\n", url).context("Cannot write Gemini header")?;
 
     let mut break_response = Ok(());
 

@@ -46,8 +46,13 @@ impl<C: Deref<Target = Context>> Line<C> for Link {
     }
     fn click(&mut self, data: &Data) -> Option<RendererMsg> {
         if let Some(url) = &data.url {
-            let new = url.join(&self.url).expect("cannot parse url");
-            Some(RendererMsg::Goto(new.to_string()))
+            match url.join(&self.url) {
+                Ok(new) => Some(RendererMsg::Goto(new.to_string())),
+                Err(e) => {
+                    log::error!("Not following link since: {}", e);
+                    None
+                }
+            }
         } else {
             log::warn!("Not following link since renderer doesn't have a URL");
             None

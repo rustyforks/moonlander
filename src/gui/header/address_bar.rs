@@ -1,3 +1,4 @@
+use anyhow::Context;
 use gtk::prelude::*;
 use relm::Widget;
 use relm_derive::{widget, Msg};
@@ -6,6 +7,8 @@ use relm_derive::{widget, Msg};
 pub enum Msg {
     Goto(String),
     Redirect(String),
+
+    Error(anyhow::Error),
 }
 
 pub struct Model {
@@ -20,8 +23,10 @@ impl Widget for AddressBar {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Msg::Goto(_) => { /* listened from parent */ }
             Msg::Redirect(url) => self.model.url = url,
+
+            Msg::Goto(_) => { /* listened from parent */ }
+            Msg::Error(_) => { /* listened from parent */ }
         }
     }
 
@@ -33,8 +38,10 @@ impl Widget for AddressBar {
             text: &self.model.url,
 
             activate(entry) => {
-                let text = entry.get_text().expect("cannot get addressbar text").to_string();
-                Msg::Goto(text)
+                match entry.get_text().context("cannot get addressbar text") {
+                    Ok(text) => Msg::Goto(text.to_string()),
+                    Err(e) => Msg::Error(e)
+                }
             }
         }
     }

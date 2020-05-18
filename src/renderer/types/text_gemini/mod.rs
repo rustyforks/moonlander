@@ -3,6 +3,7 @@ use super::{
     Renderer,
 };
 use crate::renderer::lines::Line;
+use anyhow::{Context as _, Result};
 use cairo::Context;
 use std::ops::Deref;
 
@@ -19,7 +20,7 @@ impl Gemini {
 }
 
 impl<C: Deref<Target = Context>> Renderer<C> for Gemini {
-    fn parse_line(&mut self, line: &str) -> Box<dyn Line<C>> {
+    fn parse_line(&mut self, line: &str) -> Result<Box<dyn Line<C>>> {
         let mut line = line.to_owned();
 
         if line.starts_with("```") {
@@ -28,23 +29,23 @@ impl<C: Deref<Target = Context>> Renderer<C> for Gemini {
         }
 
         if self.is_preformatted {
-            return Box::new(Preformat::new(line));
+            return Ok(Box::new(Preformat::new(line)));
         }
 
         line = line.trim().to_owned();
         if line.starts_with("=>") {
             let data = &mut line[2..].trim().split_whitespace();
 
-            let link = data.next().expect("no link?");
+            let link = data.next().context("No link?")?;
             let mut caption = data.collect::<Vec<&str>>().join(" ");
 
             if caption.is_empty() {
                 caption = link.to_owned();
             }
 
-            Box::new(Link::new(caption, link.to_owned()))
+            Ok(Box::new(Link::new(caption, link.to_owned())))
         } else if line.starts_with('*') {
-            Box::new(List::new(line[1..].trim().to_owned()))
+            Ok(Box::new(List::new(line[1..].trim().to_owned())))
         } else if line.starts_with('#') {
             let mut heading = 0;
             let mut iter = line.chars();
@@ -60,9 +61,9 @@ impl<C: Deref<Target = Context>> Renderer<C> for Gemini {
             let line = iter.collect::<String>();
 
             log::debug!("{} heading {}", heading, line);
-            Box::new(Heading::new(line, heading))
+            Ok(Box::new(Heading::new(line, heading)))
         } else {
-            Box::new(Text::new(line))
+            Ok(Box::new(Text::new(line)))
         }
     }
 }

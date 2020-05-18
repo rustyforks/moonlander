@@ -58,7 +58,7 @@ impl<C: Deref<Target = Context>> Renderer<C> {
         }
     }
 
-    pub fn new_page_chunk(&mut self, contents: &str) {
+    pub fn new_page_chunk(&mut self, contents: &str) -> Result<()> {
         if self.data.source.is_empty() {
             self.lines.clear();
         }
@@ -72,8 +72,8 @@ impl<C: Deref<Target = Context>> Renderer<C> {
                 self.lines.push(
                     self.renderers
                         .get_mut(&self.data.mime)
-                        .expect("no renderer for mime")
-                        .parse_line(&line),
+                        .context("no renderer for mime")?
+                        .parse_line(&line).context("Cannot render line")?,
                 );
 
                 self.chunk_incomplete.clear();
@@ -83,6 +83,7 @@ impl<C: Deref<Target = Context>> Renderer<C> {
         }
 
         self.data.source += contents;
+        Ok(())
     }
 
     pub fn set_mime(&mut self, mime: &str) {

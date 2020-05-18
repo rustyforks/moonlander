@@ -1,3 +1,4 @@
+use anyhow::Context;
 use gtk::prelude::*;
 use relm::{Channel, DrawHandler, Relm, Widget};
 use relm_derive::{widget, Msg};
@@ -12,6 +13,7 @@ use crate::{
 pub enum Msg {
     ConnectionMessage(gemini::Message),
     Goto(String),
+    Error(anyhow::Error),
 
     UpdateDrawBuffer,
     Click(gdk::EventButton),
@@ -27,6 +29,68 @@ pub struct Model {
     renderer: Renderer<relm::drawing::DrawContext<gtk::DrawingArea>>,
 }
 
+impl Content {
+    fn try_update(&mut self, event: Msg) -> anyhow::Result<()> {
+        match event {
+            Msg::UpdateDrawBuffer => {
+                let ctx = self.model.draw.get_context();
+
+                let (_, h) = self.model.renderer.render(&ctx);
+                let w = self.content.get_preferred_size().1.width;
+
+                self.content.set_size_request(w, h);
+            }
+
+            Msg::Click(e) => {
+                let coords = e.get_coords().context("click coords empty")?;
+                let message = self.model.renderer.click(coords);
+
+                if let Some(msg) = message {
+                    match msg {
+                        RendererMsg::Goto(url) => self.model.relm.stream().emit(Msg::Goto(url)),
+                    }
+                }
+            }
+
+            Msg::Goto(url) => {
+                self.model.renderer.reset();
+
+                self.model
+                    .renderer
+                    .set_url(&url)
+                    .context("cannot set renderer url")?;
+
+                self.model
+                    .request
+                    .send(url)
+                    .context("cannot send url to connection thread")?;
+            }
+
+            Msg::ConnectionMessage(gemini::Message::Chunk(chunk)) => {
+                if let Err(e) = self.model.renderer.new_page_chunk(&chunk) {
+                    self.model.relm.stream().emit(Msg::Error(e));
+                }
+            }
+
+            Msg::ConnectionMessage(gemini::Message::MIME(mime)) => {
+                self.model.renderer.set_mime(&mime);
+            }
+
+            Msg::ConnectionMessage(gemini::Message::Redirect(url)) => {
+                self.model.relm.stream().emit(Msg::Goto(url));
+            }
+
+            Msg::ConnectionMessage(gemini::Message::Error(e)) => {
+                self.model.relm.stream().emit(Msg::Error(e));
+            }
+
+            Msg::Error(_) => { /* listened by parent */ }
+        }
+
+        Ok(())
+    }
+}
+
 #[widget]
 impl Widget for Content {
     fn model(relm: &Relm<Self>, _: ()) -> Model {
@@ -40,10 +104,13 @@ impl Widget for Content {
             let sender = sender;
 
             while let Ok(data) = recv.recv() {
-                crate::gemini::get(&data, |msg| {
+                if let Err(e) = crate::gemini::get(&data, |msg| {
                     sender.send(msg).expect("Cannot send message to UI thread")
-                })
-                .expect("Cannot get url");
+                }) {
+                    sender
+                        .send(gemini::Message::Error(e))
+                        .expect("Cannot send message to UI thread")
+                }
             }
         });
 
@@ -65,54 +132,8 @@ impl Widget for Content {
     }
 
     fn update(&mut self, event: Msg) {
-        match event {
-            Msg::UpdateDrawBuffer => {
-                let ctx = self.model.draw.get_context();
-
-                let (_, h) = self.model.renderer.render(&ctx);
-                let w = self.content.get_preferred_size().1.width;
-
-                self.content.set_size_request(w, h);
-            }
-
-            Msg::Click(e) => {
-                let message = self
-                    .model
-                    .renderer
-                    .click(e.get_coords().expect("click coords empty"));
-
-                if let Some(msg) = message {
-                    match msg {
-                        RendererMsg::Goto(url) => self.model.relm.stream().emit(Msg::Goto(url)),
-                    }
-                }
-            }
-
-            Msg::Goto(url) => {
-                self.model.renderer.reset();
-
-                self.model
-                    .renderer
-                    .set_url(&url)
-                    .expect("cannot set renderer url");
-
-                self.model
-                    .request
-                    .send(url)
-                    .expect("cannot send url to connection thread");
-            }
-
-            Msg::ConnectionMessage(gemini::Message::Chunk(chunk)) => {
-                self.model.renderer.new_page_chunk(&chunk)
-            }
-
-            Msg::ConnectionMessage(gemini::Message::MIME(mime)) => {
-                self.model.renderer.set_mime(&mime)
-            }
-
-            Msg::ConnectionMessage(gemini::Message::Redirect(url)) => {
-                self.model.relm.stream().emit(Msg::Goto(url))
-            }
+        if let Err(e) = self.try_update(event) {
+            self.model.relm.stream().emit(Msg::Error(e))
         }
     }
 
