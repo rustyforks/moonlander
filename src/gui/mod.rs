@@ -3,6 +3,7 @@ mod header;
 
 use gtk::prelude::*;
 use gtk::Inhibit;
+use gtk::WidgetExt;
 use relm::{connect, init, Component, Relm, Widget};
 use relm_derive::{widget, Msg};
 
@@ -53,8 +54,13 @@ impl Widget for Win {
         gtk::ApplicationWindow {
             titlebar: Some(self.model.header.widget()),
 
-            #[name="content"]
-            Content {},
+            gtk::ScrolledWindow {
+                min_content_width: 400,
+                min_content_height: 400,
+
+                #[name="content"]
+                Content {},
+            },
 
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
         }

@@ -3,13 +3,18 @@ use relm::{Channel, DrawHandler, Relm, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
 
-use crate::{gemini, renderer::Renderer};
+use crate::{
+    gemini,
+    renderer::{Msg as RendererMsg, Renderer},
+};
 
 #[derive(Msg)]
 pub enum Msg {
-    UpdateDrawBuffer,
     ConnectionMessage(gemini::Message),
     Goto(String),
+
+    UpdateDrawBuffer,
+    Click(gdk::EventButton),
 }
 
 pub struct Model {
@@ -19,7 +24,7 @@ pub struct Model {
     _channel: Channel<gemini::Message>,
 
     draw: DrawHandler<gtk::DrawingArea>,
-    renderer: Renderer,
+    renderer: Renderer<relm::drawing::DrawContext<gtk::DrawingArea>>,
 }
 
 #[widget]
@@ -55,17 +60,42 @@ impl Widget for Content {
 
     fn init_view(&mut self) {
         self.model.draw.init(&self.content);
+
+        self.content.add_events(gdk::EventMask::ALL_EVENTS_MASK); // TODO: maybe make this more granular
     }
 
     fn update(&mut self, event: Msg) {
         match event {
             Msg::UpdateDrawBuffer => {
                 let ctx = self.model.draw.get_context();
-                self.model.renderer.render(&ctx);
+
+                let (_, h) = self.model.renderer.render(&ctx);
+                let w = self.content.get_preferred_size().1.width;
+
+                self.content.set_size_request(w, h);
+            }
+
+            Msg::Click(e) => {
+                let message = self
+                    .model
+                    .renderer
+                    .click(e.get_coords().expect("click coords empty"));
+
+                if let Some(msg) = message {
+                    match msg {
+                        RendererMsg::Goto(url) => self.model.relm.stream().emit(Msg::Goto(url)),
+                    }
+                }
             }
 
             Msg::Goto(url) => {
                 self.model.renderer.reset();
+
+                self.model
+                    .renderer
+                    .set_url(&url)
+                    .expect("cannot set renderer url");
+
                 self.model
                     .request
                     .send(url)
@@ -99,6 +129,7 @@ impl Widget for Content {
                 can_focus: true,
 
                 draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
+                button_press_event(_, e) => (Msg::Click(e.clone()), Inhibit(false)),
             },
         }
     }
