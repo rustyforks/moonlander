@@ -22,6 +22,7 @@ pub enum Message {
     Redirect(String),
 
     Error(anyhow::Error),
+    Done,
 }
 
 pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {

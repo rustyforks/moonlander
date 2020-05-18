@@ -15,12 +15,16 @@ pub enum Msg {
     Error(String, String),
 
     Goto(String),
+    GotoDone,
+
     Redirect(String),
 }
 
 pub struct Model {
     relm: Relm<Win>,
     header: Component<Header>,
+
+    status_ctx_goto: u32,
 }
 
 #[widget]
@@ -31,6 +35,8 @@ impl Widget for Win {
         Model {
             header,
             relm: relm.clone(),
+
+            status_ctx_goto: 0,
         }
     }
 
@@ -38,8 +44,12 @@ impl Widget for Win {
         let header = &self.model.header;
         let content = &self.content;
 
+        self.model.status_ctx_goto = self.status.get_context_id("Navigation");
+        self.status.hide();
+
         connect!(header@HeaderMsg::Goto(ref url), self.model.relm, Msg::Goto(url.to_owned()));
 
+        connect!(content@MoonrenderMsg::Done, self.model.relm, Msg::GotoDone);
         connect!(content@MoonrenderMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));
         connect!(content@MoonrenderMsg::Error(ref e), self.model.relm, Msg::Error(e.to_string(), {
             let mut err_str = String::new();
@@ -79,8 +89,44 @@ impl Widget for Win {
                 d.show();
             }
 
-            Msg::Goto(url) => self.content.emit(MoonrenderMsg::Goto(url)),
-            Msg::Redirect(url) => self.model.header.emit(HeaderMsg::Redirect(url)),
+            Msg::Goto(url) => {
+                self.content.emit(MoonrenderMsg::Goto(url.clone()));
+
+                self.status.show();
+
+                self.status.remove_all(self.model.status_ctx_goto);
+                self.status
+                    .push(self.model.status_ctx_goto, &format!("Loading {}...", url));
+            }
+
+            Msg::Redirect(url) => {
+                self.model.header.emit(HeaderMsg::Redirect(url.clone()));
+
+                self.status.show();
+
+                self.status.remove_all(self.model.status_ctx_goto);
+                self.status
+                    .push(self.model.status_ctx_goto, &format!("Loading {}...", url));
+            }
+
+            Msg::GotoDone => {
+                self.status.remove_all(self.model.status_ctx_goto);
+
+                // this is useless
+                if let Some(area) = self.status.get_message_area() {
+                    if let Some(widget) = area.get_children().iter().cloned().next() {
+                        if let Ok(label) = widget.downcast::<gtk::Label>() {
+                            if let Some(text) = label.get_text() {
+                                if !text.is_empty() {
+                                    return;
+                                }
+                            }
+                        };
+                    }
+                }
+
+                self.status.hide();
+            }
         }
     }
 
@@ -89,8 +135,19 @@ impl Widget for Win {
         gtk::ApplicationWindow {
             titlebar: Some(self.model.header.widget()),
 
-            #[name="content"]
-            Moonrender(crate::CONFIG.theme.clone()) {},
+            gtk::Box {
+                orientation: gtk::Orientation::Vertical,
+
+                #[name="content"]
+                Moonrender(crate::CONFIG.theme.clone()) {
+                    child: {
+                        expand: true
+                    },
+                },
+
+                #[name="status"]
+                gtk::Statusbar {},
+            },
 
             delete_event(_, _) => (Msg::Quit, Inhibit(false)),
         }

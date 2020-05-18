@@ -11,6 +11,7 @@ use moonrender::{Msg as RendererMsg, Renderer};
 pub enum Msg {
     Goto(String),
     Error(anyhow::Error),
+    Done,
 
     UpdateDrawBuffer,
     Click(gdk::EventButton),
@@ -45,6 +46,10 @@ impl Widget for Moonrender {
                 }) {
                     sender
                         .send(gemini::Message::Error(e))
+                        .expect("Cannot send message to UI thread")
+                } else {
+                    sender
+                        .send(gemini::Message::Done)
                         .expect("Cannot send message to UI thread")
                 }
             }
@@ -160,6 +165,11 @@ impl Moonrender {
                 self.model.relm.stream().emit(Msg::Error(e));
             }
 
+            Msg::ConnectionMessage(gemini::Message::Done) => {
+                self.model.relm.stream().emit(Msg::Done);
+            }
+
+            Msg::Done => { /* listened by parent */ }
             Msg::Error(_) => { /* listened by parent */ }
         }
 
