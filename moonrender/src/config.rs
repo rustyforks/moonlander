@@ -35,7 +35,8 @@ pub struct ListSection {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Theme {
-    pub margin_percent: f64,
+    pub margin: f64,
+    pub max_content_width: f64,
     pub paragraph_spacing: f64,
 
     pub background_color: Color,
@@ -50,7 +51,9 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            margin_percent: 0.15,
+            margin: 0.05,
+            max_content_width: 720.0,
+
             paragraph_spacing: 4.0,
 
             background_color: Color(255, 255, 255),

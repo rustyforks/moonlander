@@ -43,10 +43,8 @@ impl Line for Heading {
         self.x = x;
         self.y = y;
 
-        let w = ctx.clip_extents().2;
-        pango.set_width(pango::units_from_double(
-            w - ((w * theme.margin_percent) * 2.0),
-        ));
+        let w = ctx.clip_extents().2.min(theme.max_content_width);
+        pango.set_width(pango::units_from_double(w - (theme.margin * 2.0)));
 
         let font_description = &mut pango::FontDescription::from_string(&theme.heading.font);
         font_description.set_weight(Weight::Ultraheavy);

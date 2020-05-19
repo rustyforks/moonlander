@@ -41,10 +41,8 @@ impl Line for List {
         self.x = x;
         self.y = y;
 
-        let w = ctx.clip_extents().2;
-        pango.set_width(pango::units_from_double(
-            w - ((w * theme.margin_percent) * 2.0),
-        ));
+        let w = ctx.clip_extents().2.min(theme.max_content_width);
+        pango.set_width(pango::units_from_double(w - (theme.margin * 2.0)));
 
         let mut font_description = pango::FontDescription::from_string(&theme.list.font);
         font_description.set_size(pango::units_from_double(theme.list.size));
@@ -69,8 +67,8 @@ impl Line for List {
 
         // Draw bullet
 
-        let w = ctx.clip_extents().2;
-        let w = w as f64 * theme.margin_percent;
+        let w = ctx.clip_extents().2.min(theme.max_content_width);
+        let w = w as f64 * theme.margin;
 
         pango.set_width(pango::units_from_double(w));
         ctx.rel_move_to(-(w + theme.list.bullet_padding), 0.0);

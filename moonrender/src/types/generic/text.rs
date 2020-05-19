@@ -45,10 +45,8 @@ impl Line for Text {
             return;
         }
 
-        let w = ctx.clip_extents().2;
-        pango.set_width(pango::units_from_double(
-            w - ((w * theme.margin_percent) * 2.0),
-        ));
+        let w = ctx.clip_extents().2.min(theme.max_content_width);
+        pango.set_width(pango::units_from_double(w - (theme.margin * 2.0)));
 
         let mut font_description = pango::FontDescription::from_string(&theme.content.font);
         font_description.set_size(pango::units_from_double(theme.content.size));

@@ -47,8 +47,6 @@ pub struct Renderer {
     chunk_incomplete: String,
 
     renderers: HashMap<String, Box<dyn types::Renderer>>,
-    margin: f64,
-
     cache: Cache,
 }
 
@@ -87,7 +85,6 @@ impl Renderer {
             chunk_incomplete: String::new(),
 
             renderers,
-            margin: 0.0,
         }
     }
 
@@ -174,13 +171,19 @@ impl Renderer {
             let pango = pangocairo::create_layout(ctx).expect("cannot create pango layout");
 
             let w = ctx.clip_extents().2;
-            self.margin = w * self.data.theme.margin_percent;
+            let margin = self.data.theme.margin;
 
-            ctx.move_to(self.margin, self.data.theme.paragraph_spacing * 2.0);
-
+            ctx.move_to(margin, self.data.theme.paragraph_spacing * 2.0);
             for line in &mut self.lines {
                 let pos = line.get_pos();
                 let size = line.get_size();
+
+                let curr = ctx.get_current_point();
+
+                let fixed_width = w.min(self.data.theme.max_content_width) - (margin * 2.0);
+                let x = (w / 2.0) - (fixed_width / 2.0);
+
+                ctx.rel_move_to(-curr.0 + x, 0.0);
 
                 // clip lines for performance, but include extra 2 lines as to make
                 // sure other lines load properly. could be smaller I assume, but
