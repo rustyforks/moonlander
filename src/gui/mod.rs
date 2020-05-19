@@ -31,6 +31,7 @@ pub struct Model {
     status_ctx_goto: u32,
 
     history: Vec<String>,
+    forward_history: Vec<String>,
 }
 
 #[widget]
@@ -45,6 +46,7 @@ impl Widget for Win {
             status_ctx_goto: 0,
 
             history: vec![],
+            forward_history: vec![],
         }
     }
 
@@ -148,7 +150,9 @@ impl Widget for Win {
             }
 
             Msg::Back => {
-                self.model.history.pop();
+                if let Some(prev) = self.model.history.pop() {
+                    self.model.forward_history.push(prev)
+                }
 
                 if let Some(url) = self.model.history.last() {
                     let url = url.to_owned();
@@ -161,8 +165,21 @@ impl Widget for Win {
                 if self.model.history.len() < 2 {
                     self.model.header.emit(HeaderMsg::EnableBtnBack(false));
                 }
+
+                if !self.model.forward_history.is_empty() {
+                    self.model.header.emit(HeaderMsg::EnableBtnForward(true));
+                }
             }
-            Msg::Forward => {}
+            Msg::Forward => {
+                if let Some(url) = self.model.forward_history.pop() {
+                    self.content.emit(MoonrenderMsg::Goto(url.clone()));
+                    self.model.header.emit(HeaderMsg::Redirect(url));
+                }
+
+                if self.model.forward_history.is_empty() {
+                    self.model.header.emit(HeaderMsg::EnableBtnForward(false));
+                }
+            }
             Msg::Refresh => {
                 if let Some(url) = self.model.history.pop() {
                     self.content.emit(MoonrenderMsg::Goto(url.clone()));
