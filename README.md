@@ -2,6 +2,9 @@
 
 Moonlander is the fanciest Gemini client in the entire solar system.
 
+**Note:** Moonlander is still under development. While most features work well
+enough, issues might happen.
+
 ## Features
 
 - Custom, themeable rendering engine via Cairo & Pango
