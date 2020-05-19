@@ -22,6 +22,7 @@ enough, issues might happen.
 
 ### Planned Features
 
+- Tabs
 - Render more than just text/gemini and plaintext.
   - Planned: Markdown & images
 
