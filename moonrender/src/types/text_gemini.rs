@@ -3,8 +3,6 @@ use super::{
     Line, Renderer,
 };
 use anyhow::{Context as _, Result};
-use cairo::Context;
-use std::ops::Deref;
 
 pub struct Gemini {
     is_preformatted: bool,
@@ -18,8 +16,8 @@ impl Gemini {
     }
 }
 
-impl<C: Deref<Target = Context>> Renderer<C> for Gemini {
-    fn parse_line(&mut self, line: &str) -> Result<Box<dyn Line<C>>> {
+impl Renderer for Gemini {
+    fn parse_line(&mut self, line: &str) -> Result<Box<dyn Line>> {
         let mut line = line.to_owned();
 
         if line.starts_with("```") {

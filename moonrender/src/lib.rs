@@ -4,6 +4,7 @@ mod types;
 
 use anyhow::{Context as _, Result};
 use cairo::Context;
+use float_cmp::approx_eq;
 use lines::Line;
 use std::{collections::HashMap, ops::Deref};
 use types::{text_gemini::Gemini, text_plain::Plain};
@@ -15,7 +16,6 @@ pub enum Msg {
     Goto(String),
 }
 
-#[derive(Default)]
 pub struct Data {
     pub mime: String,
     pub url: Option<Url>,
@@ -25,21 +25,36 @@ pub struct Data {
     pub theme: Theme,
 }
 
-#[derive(Default)]
-pub struct Renderer<C: Deref<Target = Context>> {
+pub struct Cache {
+    pub source: String,
+    pub mime: String,
+
+    pub width: f64,
+    pub height: f64,
+
+    pub y_offset: f64,
+
+    pub surface: Option<cairo::Surface>,
+
+    pub actual_height: i32,
+}
+
+pub struct Renderer {
     pub data: Data,
 
-    lines: Vec<Box<dyn Line<C>>>,
+    lines: Vec<Box<dyn Line>>,
 
     chunk_incomplete: String,
 
-    renderers: HashMap<String, Box<dyn types::Renderer<C>>>,
+    renderers: HashMap<String, Box<dyn types::Renderer>>,
     margin: f64,
+
+    cache: Cache,
 }
 
-impl<C: Deref<Target = Context>> Renderer<C> {
+impl Renderer {
     pub fn new(theme: Theme) -> Self {
-        let mut renderers: HashMap<String, Box<dyn types::Renderer<C>>> = HashMap::new();
+        let mut renderers: HashMap<String, Box<dyn types::Renderer>> = HashMap::new();
 
         renderers.insert("text/gemini".to_owned(), Box::new(Gemini::new()));
         renderers.insert("text/plain".to_owned(), Box::new(Plain::new()));
@@ -52,6 +67,19 @@ impl<C: Deref<Target = Context>> Renderer<C> {
                 source: String::new(),
 
                 theme,
+            },
+
+            cache: Cache {
+                source: String::new(),
+                mime: String::new(),
+
+                width: 0.0,
+                height: 0.0,
+                y_offset: 0.0,
+
+                surface: None,
+
+                actual_height: 0,
             },
 
             lines: vec![],
@@ -109,42 +137,80 @@ impl<C: Deref<Target = Context>> Renderer<C> {
         self.data.source = String::new();
     }
 
-    pub fn render(&mut self, y_offset: f64, height: f64, ctx: &C) -> (i32, i32) {
-        ctx.set_source_rgb(
-            self.data.theme.background_color.0 as f64 / 255.0,
-            self.data.theme.background_color.1 as f64 / 255.0,
-            self.data.theme.background_color.2 as f64 / 255.0,
-        );
+    pub fn render(
+        &mut self,
+        y_offset: f64,
+        height: f64,
+        ctx: &impl Deref<Target = Context>,
+    ) -> (i32, i32) {
+        //todo!("CACHE THE SURFACE"); // https://www.cairographics.org/manual/cairo-Image-Surfaces.html
 
-        ctx.paint();
+        let size = ctx.clip_extents();
 
-        let pango = pangocairo::create_layout(ctx).expect("cannot create pango layout");
+        if !(approx_eq!(f64, self.cache.width, size.2)
+            && approx_eq!(f64, self.cache.height, height)
+            && approx_eq!(f64, self.cache.y_offset, y_offset)
+            && self.cache.source == self.data.source
+            && self.cache.mime == self.data.mime)
+        {
+            let surf = ctx
+                .get_target()
+                .create_similar_image(cairo::Format::ARgb32, size.2 as i32, size.3 as i32)
+                .expect("Cannot create cache surface");
 
-        let w = ctx.clip_extents().2;
-        self.margin = w * self.data.theme.margin_percent;
+            self.cache.surface = Some(surf);
 
-        ctx.move_to(self.margin, self.data.theme.paragraph_spacing * 2.0);
+            let surf = self.cache.surface.as_mut().unwrap();
+            let ctx = &cairo::Context::new(surf);
 
-        for line in &mut self.lines {
-            let pos = line.get_pos();
-            let size = line.get_size();
+            ctx.set_source_rgb(
+                self.data.theme.background_color.0 as f64 / 255.0,
+                self.data.theme.background_color.1 as f64 / 255.0,
+                self.data.theme.background_color.2 as f64 / 255.0,
+            );
 
-            // clip lines for performance, but include extra 2 lines as to make
-            // sure other lines load properly. could be smaller I assume, but
-            // let's play it safe
-            if pos.1 - (pos.1 * 2.0) <= y_offset + height && (pos.1 + size.1) * 2.0 >= y_offset {
-                line.draw(ctx, &pango, &self.data.theme);
+            ctx.paint();
+
+            let pango = pangocairo::create_layout(ctx).expect("cannot create pango layout");
+
+            let w = ctx.clip_extents().2;
+            self.margin = w * self.data.theme.margin_percent;
+
+            ctx.move_to(self.margin, self.data.theme.paragraph_spacing * 2.0);
+
+            for line in &mut self.lines {
+                let pos = line.get_pos();
+                let size = line.get_size();
+
+                // clip lines for performance, but include extra 2 lines as to make
+                // sure other lines load properly. could be smaller I assume, but
+                // let's play it safe
+                if pos.1 - (pos.1 * 2.0) <= y_offset + height && (pos.1 + size.1) * 2.0 >= y_offset
+                {
+                    line.draw(ctx, &pango, &self.data.theme);
+                }
+
+                // this is required to be outside of the if to be able to figure out
+                // the rest of the page's size and send to the parent
+                ctx.rel_move_to(0.0, line.get_size().1 + self.data.theme.paragraph_spacing);
             }
 
-            // this is required to be outside of the if to be able to figure out
-            // the rest of the page's size and send to the parent
-            ctx.rel_move_to(0.0, line.get_size().1 + self.data.theme.paragraph_spacing);
+            self.cache.width = size.2;
+            self.cache.height = height;
+            self.cache.source = self.data.source.clone();
+            self.cache.mime = self.data.mime.clone();
+            self.cache.y_offset = y_offset;
+
+            self.cache.actual_height =
+                ctx.get_current_point().1 as i32 + self.data.theme.paragraph_spacing as i32 * 2;
         }
 
-        (
-            w as i32,
-            ctx.get_current_point().1 as i32 + self.data.theme.paragraph_spacing as i32 * 2,
-        )
+        let surf = self.cache.surface.as_mut().unwrap();
+
+        ctx.set_source_surface(surf, 0.0, 0.0);
+        ctx.paint();
+
+        (size.2 as i32, self.cache.actual_height)
     }
 
     pub fn click(&mut self, pos: (f64, f64)) -> Option<Msg> {

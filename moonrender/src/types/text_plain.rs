@@ -1,7 +1,5 @@
 use super::{generic::Preformat, Line, Renderer};
 use anyhow::Result;
-use cairo::Context;
-use std::ops::Deref;
 
 pub struct Plain {}
 
@@ -11,8 +9,8 @@ impl Plain {
     }
 }
 
-impl<C: Deref<Target = Context>> Renderer<C> for Plain {
-    fn parse_line(&mut self, line: &str) -> Result<Box<dyn Line<C>>> {
+impl Renderer for Plain {
+    fn parse_line(&mut self, line: &str) -> Result<Box<dyn Line>> {
         let line = line.to_owned();
 
         Ok(Box::new(Preformat::new(line)))

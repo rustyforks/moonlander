@@ -2,7 +2,6 @@ use crate::lines::Line;
 use crate::Theme;
 use cairo::Context;
 use pango::{Alignment, Layout, WrapMode};
-use std::ops::Deref;
 
 pub struct Text {
     line: String,
@@ -28,7 +27,7 @@ impl Text {
     }
 }
 
-impl<C: Deref<Target = Context>> Line<C> for Text {
+impl Line for Text {
     fn get_pos(&self) -> (f64, f64) {
         (self.x, self.y)
     }
@@ -37,7 +36,7 @@ impl<C: Deref<Target = Context>> Line<C> for Text {
         (self.width, self.height)
     }
 
-    fn draw(&mut self, ctx: &C, pango: &Layout, theme: &Theme) {
+    fn draw(&mut self, ctx: &Context, pango: &Layout, theme: &Theme) {
         let (x, y) = ctx.get_current_point();
         self.x = x;
         self.y = y;

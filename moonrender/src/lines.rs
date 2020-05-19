@@ -1,12 +1,11 @@
 use cairo::Context;
 use pango::Layout;
-use std::ops::Deref;
 
-pub trait Line<C: Deref<Target = Context>> {
+pub trait Line {
     fn get_pos(&self) -> (f64, f64);
     fn get_size(&self) -> (f64, f64);
 
-    fn draw(&mut self, ctx: &C, pango: &Layout, theme: &super::Theme);
+    fn draw(&mut self, ctx: &Context, pango: &Layout, theme: &super::Theme);
 
     fn click(&mut self, _data: &super::Data) -> Option<super::Msg> {
         None // implementation optional

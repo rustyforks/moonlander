@@ -25,7 +25,7 @@ pub struct Model {
     _channel: Channel<gemini::Message>,
 
     draw: DrawHandler<gtk::DrawingArea>,
-    renderer: Renderer<relm::drawing::DrawContext<gtk::DrawingArea>>,
+    renderer: Renderer,
 }
 
 #[widget]
