@@ -12,6 +12,7 @@ enough, issues might happen.
 
 ### Known Bugs
 
+- TLS Certificates aren't verified
 - Somewhat high resource usage (for a Gemini client)
 - No cross-protocol linking (yet)
 - Cannot navigate backwards through redirections
