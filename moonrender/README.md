@@ -7,11 +7,12 @@ Moonrender uses `cairo` and `pango` for rendering.
 Moonrender currently supports the following mimetypes:
 
 - `text/gemini`
+- `text/plain`
 
 ## Example
 
 ```rust
-let render = moonrender::Renderer::new();
+let render = moonrender::Renderer::new(moonrender::Theme::default());
 
 // optional, required for relative link handling
 render.set_url("gemini://ecmelberk.com");
@@ -33,6 +34,7 @@ let scroll_y = 0.0;
 let height = 720.0;
 
 let (w, h) = render.draw(scroll_y, height, ctx);
+// w and h are the dimensions of the resulting page
 
 // Send a click event to the page
 let msg: moonrender::Msg = render.click((x, y));

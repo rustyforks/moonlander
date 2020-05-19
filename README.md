@@ -67,3 +67,26 @@ the [`moonrender`](./moonrender) directory. If your application uses [relm], you
 can use [`relm-moonrender`](./relm-moonrender).
 
 [relm]: https://github.com/antoyo/relm
+
+## Patches, Bug Reports & Discussion
+
+- If you found any issues, please [submit a ticket] (`~admicos/moonlander@todo.sr.ht`).
+- For questions, patches or discussion, [send an email] (`~admicos/projects@lists.sr.ht`).
+
+For patches sent via email, please make sure you indicate that it's for Moonlander
+by running the following on your clone of the repo:
+
+```sh
+git config format.subjectprefix "PATCH moonlander"
+```
+
+[submit a ticket]: https://todo.sr.ht/~admicos/moonlander
+[send an email]: https://lists.sr.ht/~admicos/projects
+
+## License
+
+Moonlander, Moonrender, relm-moonrender and the Gemini client under the `gemini/`
+directory are all licensed under the MIT License, which is available in the [`LICENSE`]
+file of this repository.
+
+[`LICENSE`]: ./LICENSE
