@@ -18,6 +18,10 @@ pub enum Msg {
     GotoDone,
 
     Redirect(String),
+
+    Back,
+    Forward,
+    Refresh,
 }
 
 pub struct Model {
@@ -25,6 +29,8 @@ pub struct Model {
     header: Component<Header>,
 
     status_ctx_goto: u32,
+
+    history: Vec<String>,
 }
 
 #[widget]
@@ -37,6 +43,8 @@ impl Widget for Win {
             relm: relm.clone(),
 
             status_ctx_goto: 0,
+
+            history: vec![],
         }
     }
 
@@ -48,6 +56,10 @@ impl Widget for Win {
         self.status.hide();
 
         connect!(header@HeaderMsg::Goto(ref url), self.model.relm, Msg::Goto(url.to_owned()));
+
+        connect!(header@HeaderMsg::Back, self.model.relm, Msg::Back);
+        connect!(header@HeaderMsg::Forward, self.model.relm, Msg::Forward);
+        connect!(header@HeaderMsg::Refresh, self.model.relm, Msg::Refresh);
 
         connect!(content@MoonrenderMsg::Done, self.model.relm, Msg::GotoDone);
         connect!(content@MoonrenderMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));
@@ -62,7 +74,6 @@ impl Widget for Win {
         }));
 
         let url = crate::CONFIG.homepage.clone();
-        self.model.relm.stream().emit(Msg::Redirect(url.clone()));
         self.model.relm.stream().emit(Msg::Goto(url));
     }
 
@@ -104,6 +115,14 @@ impl Widget for Win {
 
                 self.status.show();
 
+                self.model.history.push(url.clone());
+
+                self.model.header.emit(HeaderMsg::EnableBtnRefresh(true));
+                log::debug!("r: {:?}", self.model.history);
+                if self.model.history.len() >= 2 {
+                    self.model.header.emit(HeaderMsg::EnableBtnBack(true));
+                }
+
                 self.status.remove_all(self.model.status_ctx_goto);
                 self.status
                     .push(self.model.status_ctx_goto, &format!("Loading {}...", url));
@@ -126,6 +145,29 @@ impl Widget for Win {
                 }
 
                 self.status.hide();
+            }
+
+            Msg::Back => {
+                self.model.history.pop();
+
+                if let Some(url) = self.model.history.last() {
+                    let url = url.to_owned();
+
+                    self.model.history.pop(); // the signals push again
+                    self.content.emit(MoonrenderMsg::Goto(url.clone()));
+                    self.model.header.emit(HeaderMsg::Redirect(url));
+                }
+
+                if self.model.history.len() < 2 {
+                    self.model.header.emit(HeaderMsg::EnableBtnBack(false));
+                }
+            }
+            Msg::Forward => {}
+            Msg::Refresh => {
+                if let Some(url) = self.model.history.pop() {
+                    self.content.emit(MoonrenderMsg::Goto(url.clone()));
+                    self.model.header.emit(HeaderMsg::Redirect(url));
+                }
             }
         }
     }
