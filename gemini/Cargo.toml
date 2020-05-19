@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 url = "2.1.1"
 
-rustls = {version="0.17.0", features=["dangerous_configuration"]}
+rustls = { version = "0.17.0", features = ["dangerous_configuration"] }
 webpki = "0.21.2"
 
 lazy_static = "1.4.0"

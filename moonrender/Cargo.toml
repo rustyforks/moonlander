@@ -15,8 +15,8 @@ pangocairo = "0.9.0"
 
 log = "0.4.8"
 url = "2.1.1"
-float-cmp = {version="0.8.0", no_default_features=true, features=["std"]}
+float-cmp = { version = "0.8.0", no_default_features = true, features = ["std"] }
 
-anyhow = "1.0.31" # todo: replace with something like thiserror
+anyhow = "1.0.31"
 
-serde = {version="1.0.110", features=["derive"], optional=true}
+serde = { version = "1.0.110", features = ["derive"], optional = true }

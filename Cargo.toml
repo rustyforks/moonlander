@@ -22,7 +22,7 @@ lazy_static = "1.4.0"
 directories-next = "1.0.0"
 
 toml = "0.5.6"
-serde = {version="1.0.110", features=["derive"]}
+serde = { version = "1.0.110", features = ["derive"] }
 
 [profile.release]
 lto = true
