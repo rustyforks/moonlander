@@ -13,10 +13,12 @@ cairo-rs = "0.8.1"
 pango = "0.8.0"
 pangocairo = "0.9.0"
 
+anyhow = "1.0.31"
 log = "0.4.8"
 url = "2.1.1"
-float-cmp = { version = "0.8.0", no_default_features = true, features = ["std"] }
-
-anyhow = "1.0.31"
+mime = "0.3.16"
 
 serde = { version = "1.0.110", features = ["derive"], optional = true }
+float-cmp = { version = "0.8.0", no_default_features = true, features = ["std"] }
+
+encoding_rs = "0.8.23"

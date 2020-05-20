@@ -6,6 +6,7 @@ use anyhow::{Context as _, Result};
 use cairo::Context;
 use float_cmp::approx_eq;
 use lines::Line;
+use mime::Mime;
 use std::{collections::HashMap, ops::Deref};
 use types::{text_gemini::Gemini, text_plain::Plain};
 use url::Url;
@@ -17,7 +18,7 @@ pub enum Msg {
 }
 
 pub struct Data {
-    pub mime: String,
+    pub mime: Mime,
     pub url: Option<Url>,
 
     pub source: String,
@@ -27,7 +28,7 @@ pub struct Data {
 
 pub struct Cache {
     pub source: String,
-    pub mime: String,
+    pub mime: Mime,
 
     pub width: f64,
     pub height: f64,
@@ -48,6 +49,8 @@ pub struct Renderer {
 
     renderers: HashMap<String, Box<dyn types::Renderer>>,
     cache: Cache,
+
+    decoder: Option<encoding_rs::Decoder>,
 }
 
 impl Renderer {
@@ -59,7 +62,7 @@ impl Renderer {
 
         Self {
             data: Data {
-                mime: "text/plain".to_owned(),
+                mime: "text/plain".parse().unwrap(),
                 url: None,
 
                 source: String::new(),
@@ -69,7 +72,7 @@ impl Renderer {
 
             cache: Cache {
                 source: String::new(),
-                mime: String::new(),
+                mime: "text/plain".parse().unwrap(),
 
                 width: 0.0,
                 height: 0.0,
@@ -85,12 +88,24 @@ impl Renderer {
             chunk_incomplete: String::new(),
 
             renderers,
+            decoder: None,
         }
     }
 
-    pub fn new_page_chunk(&mut self, contents: &str) -> Result<()> {
+    pub fn new_page_chunk(&mut self, raw_contents: &str) -> Result<()> {
         if self.data.source.is_empty() {
             self.lines.clear();
+        }
+
+        // evil lifetime hacking
+        let mut contents = raw_contents.to_owned();
+        if let Some(decoder) = &mut self.decoder {
+            if let encoding_rs::DecoderResult::Malformed(_, _) = decoder
+                .decode_to_string_without_replacement(raw_contents.as_bytes(), &mut contents, false)
+                .0
+            {
+                return Err(anyhow::anyhow!("Malformed input"));
+            }
         }
 
         for chr in contents.chars() {
@@ -99,27 +114,36 @@ impl Renderer {
 
                 self.lines.push(
                     self.renderers
-                        .get_mut(&self.data.mime)
+                        .get_mut(self.data.mime.essence_str())
                         .context("no renderer for mime")?
                         .parse_line(&line)
                         .context("Cannot render line")?,
                 );
 
-                log::debug!("({}) Render line: {}", self.data.mime, line);
                 self.chunk_incomplete.clear();
             } else {
                 self.chunk_incomplete.push(chr);
             }
         }
 
-        self.data.source += contents;
+        self.data.source += &contents;
         Ok(())
     }
 
-    pub fn set_mime(&mut self, mime: &str) {
+    pub fn set_mime(&mut self, mime: Mime) {
         // we might want to assume this runs before any chunks are sent.
         log::debug!("renderer mime: {:?}", mime);
-        self.data.mime = mime.split(';').next().expect("No mime sent?").to_owned();
+        self.data.mime = mime;
+
+        self.decoder = if let Some(encoding) = self.data.mime.get_param(mime::CHARSET) {
+            if let Some(encoding) = encoding_rs::Encoding::for_label(encoding.as_str().as_bytes()) {
+                Some(encoding.new_decoder())
+            } else {
+                None
+            }
+        } else {
+            None
+        };
     }
 
     pub fn set_url(&mut self, url: &str) -> Result<()> {
@@ -130,7 +154,7 @@ impl Renderer {
     }
 
     pub fn reset(&mut self) {
-        self.data.mime = "text/plain".to_owned();
+        self.data.mime = "text/plain".parse().unwrap();
         self.data.source = String::new();
     }
 
