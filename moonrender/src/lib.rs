@@ -15,6 +15,7 @@ pub use config::Theme;
 
 pub enum Msg {
     Goto(String),
+    Tooltip(String),
 }
 
 pub struct Data {
@@ -51,6 +52,8 @@ pub struct Renderer {
     cache: Cache,
 
     decoder: Option<encoding_rs::Decoder>,
+
+    is_mouse_pressed: bool,
 }
 
 impl Renderer {
@@ -84,6 +87,7 @@ impl Renderer {
             },
 
             lines: vec![],
+            is_mouse_pressed: false,
 
             chunk_incomplete: String::new(),
 
@@ -240,12 +244,40 @@ impl Renderer {
         (size.2 as i32, self.cache.actual_height)
     }
 
+    pub fn on_mouse_move(&mut self, pos: (f64, f64)) -> Option<Msg> {
+        if self.is_mouse_pressed {
+            // todo: text selection
+            // but i don't know how i would figure out which character the cursor
+            // is under
+        } else {
+            for line in self.lines.iter() {
+                let coords = line.get_pos();
+                let size = line.get_size();
+
+                if pos.0 >= coords.0
+                    && pos.0 <= coords.0 + size.0
+                    && pos.1 >= coords.1
+                    && pos.1 <= coords.1 + size.1
+                {
+                    if let Some(tooltip) = line.get_tooltip(&self.data) {
+                        return Some(Msg::Tooltip(tooltip));
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn on_mouse_press(&mut self, _pos: (f64, f64)) -> Option<Msg> {
+        self.is_mouse_pressed = true;
         None
     }
 
     pub fn on_mouse_release(&mut self, pos: (f64, f64)) -> Option<Msg> {
         log::debug!("click {:?}", pos);
+
+        self.is_mouse_pressed = false;
 
         for line in self.lines.iter_mut() {
             let coords = line.get_pos();

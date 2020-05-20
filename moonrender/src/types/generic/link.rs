@@ -38,6 +38,16 @@ impl Line for Link {
         (self.width, self.height)
     }
 
+    fn get_tooltip(&self, data: &Data) -> Option<String> {
+        if let Some(url) = &data.url {
+            if let Ok(new) = url.join(&self.url) {
+                return Some(new.to_string());
+            }
+        }
+
+        Some(self.url.clone())
+    }
+
     fn draw(&mut self, ctx: &Context, pango: &Layout, theme: &Theme) {
         let (x, y) = ctx.get_current_point();
         self.x = x;

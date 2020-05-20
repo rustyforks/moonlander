@@ -22,9 +22,13 @@ pub enum Msg {
 
     MousePress(gdk::EventButton),
     MouseRelease(gdk::EventButton),
+    MouseMove(gdk::EventMotion),
 
     Back,
     Forward,
+
+    ShowTooltip(String),
+    HideTooltip,
 
     ConnectionMessage(gemini::Message),
 }
@@ -112,6 +116,7 @@ impl Widget for Moonrender {
 
                     draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
 
+                    motion_notify_event(_, e) => (Msg::MouseMove(e.clone()), Inhibit(false)),
                     button_press_event(_, e) => (Msg::MousePress(e.clone()), Inhibit(false)),
                     button_release_event(_, e) => (Msg::MouseRelease(e.clone()), Inhibit(false)),
                 },
@@ -139,10 +144,27 @@ impl Moonrender {
                 self.content.set_size_request(w, h);
             }
 
+            Msg::MouseMove(e) => {
+                let coords = e.get_coords().context("move coords empty")?;
+                let message = self.model.renderer.on_mouse_move(coords);
+
+                if let Some(msg) = message {
+                    if let RendererMsg::Tooltip(tooltip) = msg {
+                        self.model.relm.stream().emit(Msg::ShowTooltip(tooltip));
+                        return Ok(());
+                    }
+                }
+
+                self.model.relm.stream().emit(Msg::HideTooltip);
+            }
+
             Msg::MousePress(e) => match e.get_button() {
                 8 => self.model.relm.stream().emit(Msg::Back),
                 9 => self.model.relm.stream().emit(Msg::Forward),
-                _ => {}
+                _ => {
+                    let coords = e.get_coords().context("click release coords empty")?;
+                    let _message = self.model.renderer.on_mouse_press(coords);
+                }
             },
 
             Msg::MouseRelease(e) => {
@@ -150,8 +172,8 @@ impl Moonrender {
                 let message = self.model.renderer.on_mouse_release(coords);
 
                 if let Some(msg) = message {
-                    match msg {
-                        RendererMsg::Goto(url) => self.model.relm.stream().emit(Msg::Goto(url)),
+                    if let RendererMsg::Goto(url) = msg {
+                        self.model.relm.stream().emit(Msg::Goto(url));
                     }
                 }
             }
@@ -247,6 +269,9 @@ impl Moonrender {
 
             Msg::Done => { /* listened by parent */ }
             Msg::UnsupportedRedirect(_) => { /* listened by parent */ }
+
+            Msg::ShowTooltip(_) => { /* listened by parent */ }
+            Msg::HideTooltip => { /* listened by parent */ }
         }
 
         Ok(())

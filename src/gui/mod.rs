@@ -22,6 +22,9 @@ pub enum Msg {
     Back,
     Forward,
     Refresh,
+
+    ShowTooltip(String),
+    HideTooltip,
 }
 
 pub struct Model {
@@ -29,6 +32,7 @@ pub struct Model {
     header: Component<Header>,
 
     status_ctx_goto: u32,
+    status_ctx_tooltip: u32,
 
     history: Vec<String>,
     forward_history: Vec<String>,
@@ -44,6 +48,7 @@ impl Widget for Win {
             relm: relm.clone(),
 
             status_ctx_goto: 0,
+            status_ctx_tooltip: 0,
 
             history: vec![],
             forward_history: vec![],
@@ -55,6 +60,8 @@ impl Widget for Win {
         let content = &self.content;
 
         self.model.status_ctx_goto = self.status.get_context_id("Navigation");
+        self.model.status_ctx_tooltip = self.status.get_context_id("Tooltip");
+
         self.status.hide();
 
         connect!(header@HeaderMsg::Goto(ref url), self.model.relm, Msg::Goto(url.to_owned()));
@@ -65,6 +72,9 @@ impl Widget for Win {
 
         connect!(content@MoonrenderMsg::Back, self.model.relm, Msg::Back);
         connect!(content@MoonrenderMsg::Forward, self.model.relm, Msg::Forward);
+
+        connect!(content@MoonrenderMsg::ShowTooltip(ref tip), self.model.relm, Msg::ShowTooltip(tip.to_owned()));
+        connect!(content@MoonrenderMsg::HideTooltip, self.model.relm, Msg::HideTooltip);
 
         connect!(content@MoonrenderMsg::Done, self.model.relm, Msg::GotoDone);
 
@@ -139,6 +149,30 @@ impl Widget for Win {
                 self.status.remove_all(self.model.status_ctx_goto);
 
                 // this is useless
+                if let Some(area) = self.status.get_message_area() {
+                    if let Some(widget) = area.get_children().iter().cloned().next() {
+                        if let Ok(label) = widget.downcast::<gtk::Label>() {
+                            if let Some(text) = label.get_text() {
+                                if !text.is_empty() {
+                                    return;
+                                }
+                            }
+                        };
+                    }
+                }
+
+                self.status.hide();
+            }
+
+            Msg::ShowTooltip(tip) => {
+                self.status.show();
+                self.status.push(self.model.status_ctx_tooltip, &tip);
+            }
+
+            Msg::HideTooltip => {
+                self.status.remove_all(self.model.status_ctx_tooltip);
+
+                // this is even more useless
                 if let Some(area) = self.status.get_message_area() {
                     if let Some(widget) = area.get_children().iter().cloned().next() {
                         if let Ok(label) = widget.downcast::<gtk::Label>() {

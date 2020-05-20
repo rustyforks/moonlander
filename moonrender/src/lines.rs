@@ -7,6 +7,10 @@ pub trait Line {
 
     fn draw(&mut self, ctx: &Context, pango: &Layout, theme: &super::Theme);
 
+    fn get_tooltip(&self, _data: &super::Data) -> Option<String> {
+        None // implementation optional
+    }
+
     fn click(&mut self, _data: &super::Data) -> Option<super::Msg> {
         None // implementation optional
     }
