@@ -12,7 +12,6 @@ use relm_moonrender::{Moonrender, Msg as MoonrenderMsg};
 #[derive(Msg)]
 pub enum Msg {
     Quit,
-    Error(String, String),
 
     Goto(String),
     GotoDone,
@@ -65,15 +64,6 @@ impl Widget for Win {
 
         connect!(content@MoonrenderMsg::Done, self.model.relm, Msg::GotoDone);
         connect!(content@MoonrenderMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));
-        connect!(content@MoonrenderMsg::Error(ref e), self.model.relm, Msg::Error(e.to_string(), {
-            let mut err_str = String::new();
-
-            for e in e.chain().skip(1) {
-                err_str += &format!("because: {}\n", e.to_string());
-            }
-
-            err_str.trim().to_owned()
-        }));
 
         let url = crate::CONFIG.homepage.clone();
         self.model.relm.stream().emit(Msg::Goto(url));
@@ -82,25 +72,6 @@ impl Widget for Win {
     fn update(&mut self, event: Msg) {
         match event {
             Msg::Quit => gtk::main_quit(),
-            Msg::Error(err, trace) => {
-                log::error!("{}", err);
-                trace.split('\n').for_each(|l| log::error!("{}", l));
-
-                let d = gtk::MessageDialog::new(
-                    Some(&self.window),
-                    gtk::DialogFlags::all(),
-                    gtk::MessageType::Error,
-                    gtk::ButtonsType::Close,
-                    &trace,
-                );
-
-                d.set_title(&err);
-                d.connect_response(|d, _| {
-                    d.destroy();
-                });
-
-                d.show();
-            }
 
             Msg::Goto(url) => {
                 self.content.emit(MoonrenderMsg::Goto(url.clone()));

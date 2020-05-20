@@ -7,6 +7,8 @@ use std::sync::mpsc;
 pub use moonrender;
 use moonrender::{Msg as RendererMsg, Renderer};
 
+const ERROR_PAGE: &str = include_str!("error.gemini");
+
 #[derive(Msg)]
 pub enum Msg {
     Goto(String),
@@ -26,6 +28,8 @@ pub struct Model {
 
     draw: DrawHandler<gtk::DrawingArea>,
     renderer: Renderer,
+
+    redirect_counter: u8,
 }
 
 #[widget]
@@ -63,6 +67,8 @@ impl Widget for Moonrender {
 
             draw: DrawHandler::new().expect("Cannot create content draw handler"),
             renderer: Renderer::new(theme),
+
+            redirect_counter: 0,
         }
     }
 
@@ -148,17 +154,22 @@ impl Moonrender {
             }
 
             Msg::ConnectionMessage(gemini::Message::Chunk(chunk)) => {
-                if let Err(e) = self.model.renderer.new_page_chunk(&chunk) {
-                    self.model.relm.stream().emit(Msg::Error(e));
-                }
+                self.model.renderer.new_page_chunk(&chunk)?;
             }
 
             Msg::ConnectionMessage(gemini::Message::MIME(mime)) => {
-                self.model.renderer.set_mime(&mime);
+                self.model
+                    .renderer
+                    .set_mime(mime.parse().context("Cannot parse response mimetype")?);
             }
 
             Msg::ConnectionMessage(gemini::Message::Redirect(url)) => {
-                self.model.relm.stream().emit(Msg::Goto(url));
+                self.model.redirect_counter += 1;
+                if self.model.redirect_counter > 5 {
+                    return Err(anyhow::anyhow!("Redirect loop detected"));
+                } else {
+                    self.model.relm.stream().emit(Msg::Goto(url));
+                }
             }
 
             Msg::ConnectionMessage(gemini::Message::Error(e)) => {
@@ -169,8 +180,42 @@ impl Moonrender {
                 self.model.relm.stream().emit(Msg::Done);
             }
 
+            Msg::ConnectionMessage(gemini::Message::ErrorResponse(code, msg)) => {
+                let mut error_page =
+                    ERROR_PAGE.replace("{code}", &format!("Error {}", code.to_string()));
+
+                error_page = error_page.replace("{status}", &msg);
+                error_page = error_page.replace(
+                    "{message}",
+                    &if let Some(msg) = gemini::get_message_for(code) {
+                        msg
+                    } else {
+                        "Unknown Status Code".to_owned()
+                    },
+                );
+
+                self.model.renderer.set_mime("text/gemini".parse().unwrap());
+                self.model.renderer.new_page_chunk(&error_page)?;
+
+                self.model.relm.stream().emit(Msg::Done);
+            }
+
             Msg::Done => { /* listened by parent */ }
-            Msg::Error(_) => { /* listened by parent */ }
+            Msg::Error(e) => {
+                let mut error_page = ERROR_PAGE.replace("{code}", &e.to_string());
+                let mut err_str = String::new();
+
+                for e in e.chain().skip(1) {
+                    err_str += &format!("because: {}\n", e.to_string());
+                }
+
+                error_page = error_page.replace("{message}", err_str.trim());
+
+                self.model.renderer.set_mime("text/gemini".parse().unwrap());
+                self.model.renderer.new_page_chunk(&error_page)?;
+
+                self.model.relm.stream().emit(Msg::Done);
+            }
         }
 
         Ok(())

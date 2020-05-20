@@ -1,3 +1,4 @@
+mod status;
 mod verifier;
 
 use anyhow::{Context, Result};
@@ -7,6 +8,8 @@ use std::{
     sync::Arc,
 };
 use url::Url;
+
+pub use status::get_message_for;
 
 lazy_static::lazy_static! {
     static ref TLS: Arc<rustls::ClientConfig> = Arc::new({
@@ -20,6 +23,7 @@ pub enum Message {
     Chunk(String),
     MIME(String),
     Redirect(String),
+    ErrorResponse(u8, String),
 
     Error(anyhow::Error),
     Done,
@@ -93,7 +97,8 @@ pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
                 chunk_callback(Message::Redirect(meta.to_owned()));
                 break;
             } else {
-                todo!("non success responses");
+                chunk_callback(Message::ErrorResponse(status, meta.to_owned()));
+                break;
             }
 
             is_content = true;
