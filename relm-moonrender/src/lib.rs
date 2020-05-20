@@ -19,7 +19,13 @@ pub enum Msg {
     Done,
 
     UpdateDrawBuffer,
-    Click(gdk::EventButton),
+
+    MousePress(gdk::EventButton),
+    MouseRelease(gdk::EventButton),
+
+    Back,
+    Forward,
+
     ConnectionMessage(gemini::Message),
 }
 
@@ -105,7 +111,9 @@ impl Widget for Moonrender {
                     can_focus: true,
 
                     draw(_, _) => (Msg::UpdateDrawBuffer, Inhibit(false)),
-                    button_press_event(_, e) => (Msg::Click(e.clone()), Inhibit(false)),
+
+                    button_press_event(_, e) => (Msg::MousePress(e.clone()), Inhibit(false)),
+                    button_release_event(_, e) => (Msg::MouseRelease(e.clone()), Inhibit(false)),
                 },
             },
         }
@@ -131,9 +139,15 @@ impl Moonrender {
                 self.content.set_size_request(w, h);
             }
 
-            Msg::Click(e) => {
+            Msg::MousePress(e) => match e.get_button() {
+                8 => self.model.relm.stream().emit(Msg::Back),
+                9 => self.model.relm.stream().emit(Msg::Forward),
+                _ => {}
+            },
+
+            Msg::MouseRelease(e) => {
                 let coords = e.get_coords().context("click coords empty")?;
-                let message = self.model.renderer.click(coords);
+                let message = self.model.renderer.on_mouse_release(coords);
 
                 if let Some(msg) = message {
                     match msg {
@@ -227,6 +241,9 @@ impl Moonrender {
 
                 self.model.relm.stream().emit(Msg::Done);
             }
+
+            Msg::Back => { /* listened by parent */ }
+            Msg::Forward => { /* listened by parent */ }
 
             Msg::Done => { /* listened by parent */ }
             Msg::UnsupportedRedirect(_) => { /* listened by parent */ }

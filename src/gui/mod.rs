@@ -63,6 +63,9 @@ impl Widget for Win {
         connect!(header@HeaderMsg::Forward, self.model.relm, Msg::Forward);
         connect!(header@HeaderMsg::Refresh, self.model.relm, Msg::Refresh);
 
+        connect!(content@MoonrenderMsg::Back, self.model.relm, Msg::Back);
+        connect!(content@MoonrenderMsg::Forward, self.model.relm, Msg::Forward);
+
         connect!(content@MoonrenderMsg::Done, self.model.relm, Msg::GotoDone);
 
         connect!(content@MoonrenderMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));

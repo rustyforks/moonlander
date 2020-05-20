@@ -240,7 +240,11 @@ impl Renderer {
         (size.2 as i32, self.cache.actual_height)
     }
 
-    pub fn click(&mut self, pos: (f64, f64)) -> Option<Msg> {
+    pub fn on_mouse_press(&mut self, _pos: (f64, f64)) -> Option<Msg> {
+        None
+    }
+
+    pub fn on_mouse_release(&mut self, pos: (f64, f64)) -> Option<Msg> {
         log::debug!("click {:?}", pos);
 
         for line in self.lines.iter_mut() {
