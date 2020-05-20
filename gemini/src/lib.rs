@@ -73,11 +73,9 @@ pub fn get(url: &str, chunk_callback: impl Fn(Message) -> ()) -> Result<()> {
             log::debug!("content, pass through");
             data.as_ref()
         } else {
-            log::debug!("parse headers: {}", data);
-
-            let mut split_data = data.splitn(1, "\r\n");
-
+            let mut split_data = data.splitn(2, "\r\n");
             let header = split_data.next().context("No header received")?;
+
             let mut header = header.split_whitespace();
 
             let status = header
