@@ -17,6 +17,7 @@ pub enum Msg {
     GotoDone,
 
     Redirect(String),
+    UnsupportedRedirect(String),
 
     Back,
     Forward,
@@ -63,7 +64,9 @@ impl Widget for Win {
         connect!(header@HeaderMsg::Refresh, self.model.relm, Msg::Refresh);
 
         connect!(content@MoonrenderMsg::Done, self.model.relm, Msg::GotoDone);
+
         connect!(content@MoonrenderMsg::Goto(ref url), self.model.relm, Msg::Redirect(url.to_owned()));
+        connect!(content@MoonrenderMsg::UnsupportedRedirect(ref url), self.model.relm, Msg::UnsupportedRedirect(url.clone()));
 
         let url = crate::CONFIG.homepage.clone();
         self.model.relm.stream().emit(Msg::Goto(url));
@@ -81,6 +84,34 @@ impl Widget for Win {
                 self.status.remove_all(self.model.status_ctx_goto);
                 self.status
                     .push(self.model.status_ctx_goto, &format!("Loading {}...", url));
+            }
+
+            Msg::UnsupportedRedirect(url) => {
+                let d = gtk::MessageDialog::new(
+                    Some(&self.window),
+                    gtk::DialogFlags::all(),
+                    gtk::MessageType::Question,
+                    gtk::ButtonsType::YesNo,
+                    &format!("Moonlander does not support the following URL:\n\n{}\n\nDo you want to open it in your default browser?", url),
+                );
+
+                d.set_title("Unsupported URL");
+                d.connect_response(move |d, resp| {
+                    if let gtk::ResponseType::Yes = resp {
+                        webbrowser::open(&url).unwrap();
+                    }
+
+                    d.destroy();
+                });
+
+                self.model.history.pop();
+                if self.model.history.len() < 2 {
+                    self.model.header.emit(HeaderMsg::EnableBtnBack(false));
+                }
+
+                self.model.relm.stream().emit(Msg::GotoDone);
+
+                d.show();
             }
 
             Msg::Redirect(url) => {

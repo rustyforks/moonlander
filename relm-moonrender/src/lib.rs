@@ -3,14 +3,17 @@ use gtk::prelude::*;
 use relm::{Channel, DrawHandler, Relm, Widget};
 use relm_derive::{widget, Msg};
 use std::sync::mpsc;
+use url::Url;
 
 pub use moonrender;
 use moonrender::{Msg as RendererMsg, Renderer};
 
 const ERROR_PAGE: &str = include_str!("error.gemini");
+const SUPPORTED_PROTOCOLS: &[&str] = &["gemini"];
 
 #[derive(Msg)]
 pub enum Msg {
+    UnsupportedRedirect(String),
     Goto(String),
     Error(anyhow::Error),
     Done,
@@ -140,17 +143,26 @@ impl Moonrender {
             }
 
             Msg::Goto(url) => {
-                self.model.renderer.reset();
+                let url = Url::parse(&url).context("Cannot parse URL")?;
 
-                self.model
-                    .renderer
-                    .set_url(&url)
-                    .context("cannot set renderer url")?;
+                if !SUPPORTED_PROTOCOLS.contains(&url.scheme()) {
+                    self.model
+                        .relm
+                        .stream()
+                        .emit(Msg::UnsupportedRedirect(url.to_string()));
+                } else {
+                    self.model.renderer.reset();
 
-                self.model
-                    .request
-                    .send(url)
-                    .context("cannot send url to connection thread")?;
+                    self.model
+                        .request
+                        .send(url.to_string())
+                        .context("cannot send url to connection thread")?;
+
+                    self.model
+                        .renderer
+                        .set_url(url)
+                        .context("cannot set renderer url")?;
+                }
             }
 
             Msg::ConnectionMessage(gemini::Message::Chunk(chunk)) => {
@@ -200,7 +212,6 @@ impl Moonrender {
                 self.model.relm.stream().emit(Msg::Done);
             }
 
-            Msg::Done => { /* listened by parent */ }
             Msg::Error(e) => {
                 let mut error_page = ERROR_PAGE.replace("{code}", &e.to_string());
                 let mut err_str = String::new();
@@ -216,6 +227,9 @@ impl Moonrender {
 
                 self.model.relm.stream().emit(Msg::Done);
             }
+
+            Msg::Done => { /* listened by parent */ }
+            Msg::UnsupportedRedirect(_) => { /* listened by parent */ }
         }
 
         Ok(())

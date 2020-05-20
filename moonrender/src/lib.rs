@@ -146,9 +146,9 @@ impl Renderer {
         };
     }
 
-    pub fn set_url(&mut self, url: &str) -> Result<()> {
+    pub fn set_url(&mut self, url: Url) -> Result<()> {
         log::debug!("renderer url: {:?}", url);
-        self.data.url = Some(Url::parse(url).context("Cannot parse URL")?);
+        self.data.url = Some(url);
 
         Ok(())
     }

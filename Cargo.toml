@@ -23,6 +23,7 @@ directories-next = "1.0.0"
 
 toml = "0.5.6"
 serde = { version = "1.0.110", features = ["derive"] }
+webbrowser = "0.5.2"
 
 [profile.release]
 lto = true

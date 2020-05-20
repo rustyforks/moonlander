@@ -14,7 +14,6 @@ enough, issues might happen.
 
 - TLS Certificates aren't verified
 - Somewhat high resource usage (for a Gemini client)
-- No cross-protocol linking (yet)
 - Cannot navigate backwards through redirections
 - Renderer doesn't behave "native"
   - Cannot select/copy text
